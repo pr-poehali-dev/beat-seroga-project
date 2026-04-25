@@ -43,8 +43,8 @@ const rarityLabel: Record<string, string> = {
 export default function Index() {
   const [screen, setScreen] = useState<Screen>("menu");
   const [shopTab, setShopTab] = useState<ShopTab>("skins");
-  const [coins, setCoins] = useState(320);
-  const [gems, setGems] = useState(45);
+  const [coins, setCoins] = useState(1000);
+  const [gems, setGems] = useState(1468);
   const [purchased, setPurchased] = useState<number[]>([2]);
   const [notification, setNotification] = useState<string | null>(null);
 
