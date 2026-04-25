@@ -383,7 +383,7 @@ function GameScreen({ onBack, onEarnCoins, onEarnGems }: { onBack: () => void; o
   const spawnMeteor = useCallback(() => {
     if (pausedRef.current || gameOverRef.current) return;
     const lv = levelRef.current;
-    const maxHp = BASE_METEOR_HP + (lv - 1) * HP_PER_LEVEL;
+    const maxHp = 3; // всегда 3 сердечка
     // Размер зависит от уровня метеорита — визуально больше на высоких уровнях
     const size = 44 + Math.min(lv * 0.5, 20) + Math.random() * 16;
     const themeIdx = lv <= 3 ? 0 : lv <= 10 ? 1 : lv <= 30 ? 2 : 3;
@@ -452,7 +452,7 @@ function GameScreen({ onBack, onEarnCoins, onEarnGems }: { onBack: () => void; o
               const dy = Math.abs(b.y - m.y);
               if (dx < m.size * 0.4 && dy < m.size * 0.4) {
                 hitBullets.add(b.id);
-                const dmg = damageRef.current;
+                const dmg = 2; // всегда -2 сердечка за выстрел
                 const newHp = m.hp - dmg;
                 if (newHp <= 0) {
                   const theme = METEOR_THEMES[Math.min(m.maxHp - 1, METEOR_THEMES.length - 1)];
