@@ -231,11 +231,69 @@ function MenuTile({ icon, label }: { icon: string; label: string }) {
 
 // ─── GAME SCREEN ────────────────────────────────────────────────────────────
 
+// 3D Кот-тушка (без картинки, чистый CSS)
+function Cat3D({ x, level }: { x: number; level: number }) {
+  const lvlColor = level < 5 ? "#FF9500" : level < 10 ? "#FF2D78" : level < 20 ? "#CC44FF" : "#FFE600";
+  return (
+    <div style={{ position: "absolute", bottom: "3%", left: `${x}%`, transform: "translateX(-50%)", zIndex: 8, pointerEvents: "none" }}>
+      {/* Тело кота — 3D сфера */}
+      <div style={{ position: "relative", width: 60, height: 60 }}>
+        {/* Тело */}
+        <div style={{
+          width: 54, height: 48, borderRadius: "50% 50% 45% 45%",
+          background: "radial-gradient(circle at 38% 30%, #f5c07a 0%, #e8923a 45%, #a0510e 100%)",
+          boxShadow: "inset -6px -6px 14px rgba(0,0,0,.5), inset 4px 4px 10px rgba(255,255,255,.25), 0 0 20px rgba(255,149,0,.6), 0 6px 16px rgba(0,0,0,.5)",
+          position: "absolute", bottom: 0, left: 3,
+        }}>
+          {/* Блик на теле */}
+          <div style={{ position: "absolute", top: "14%", left: "20%", width: "32%", height: "24%", borderRadius: "50%", background: "radial-gradient(circle,rgba(255,255,255,.5) 0%,transparent 100%)" }} />
+          {/* Полоски */}
+          <div style={{ position: "absolute", top: "35%", left: "15%", width: "70%", height: 2, background: "rgba(120,50,0,.3)", borderRadius: 2 }} />
+          <div style={{ position: "absolute", top: "55%", left: "20%", width: "60%", height: 2, background: "rgba(120,50,0,.3)", borderRadius: 2 }} />
+        </div>
+        {/* Голова */}
+        <div style={{
+          width: 44, height: 40, borderRadius: "50% 50% 40% 40%",
+          background: "radial-gradient(circle at 40% 30%, #f7ca88 0%, #e8923a 50%, #a0510e 100%)",
+          boxShadow: "inset -5px -5px 12px rgba(0,0,0,.45), inset 3px 3px 8px rgba(255,255,255,.2), 0 0 16px rgba(255,149,0,.5)",
+          position: "absolute", top: -10, left: 8,
+        }}>
+          {/* Глаза */}
+          <div style={{ position: "absolute", top: "30%", left: "18%", width: 9, height: 9, borderRadius: "50%", background: "radial-gradient(circle at 35% 30%,#44eeff,#006688)", boxShadow: "0 0 6px #00ccff" }} />
+          <div style={{ position: "absolute", top: "30%", right: "18%", width: 9, height: 9, borderRadius: "50%", background: "radial-gradient(circle at 35% 30%,#44eeff,#006688)", boxShadow: "0 0 6px #00ccff" }} />
+          {/* Нос */}
+          <div style={{ position: "absolute", top: "55%", left: "43%", width: 6, height: 5, borderRadius: "40% 40% 50% 50%", background: "#ff69b4" }} />
+          {/* Блик на голове */}
+          <div style={{ position: "absolute", top: "10%", left: "25%", width: "28%", height: "20%", borderRadius: "50%", background: "radial-gradient(circle,rgba(255,255,255,.45) 0%,transparent 100%)" }} />
+        </div>
+        {/* Уши */}
+        <div style={{ position: "absolute", top: -18, left: 6, width: 0, height: 0, borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderBottom: "14px solid #e8923a", filter: "drop-shadow(0 -2px 4px rgba(255,149,0,.5))" }} />
+        <div style={{ position: "absolute", top: -18, right: 6, width: 0, height: 0, borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderBottom: "14px solid #e8923a", filter: "drop-shadow(0 -2px 4px rgba(255,149,0,.5))" }} />
+        {/* Хвост */}
+        <div style={{ position: "absolute", bottom: 4, right: -14, width: 16, height: 28, borderRadius: "0 50% 50% 0", background: "radial-gradient(circle at 30% 50%,#f5c07a,#a0510e)", transform: "rotate(20deg)", boxShadow: "inset -3px 0 6px rgba(0,0,0,.3)" }} />
+        {/* Лапки */}
+        <div style={{ position: "absolute", bottom: -4, left: 8, width: 13, height: 8, borderRadius: "50% 50% 40% 40%", background: "radial-gradient(circle at 40% 30%,#f7ca88,#c06020)", boxShadow: "0 3px 6px rgba(0,0,0,.4)" }} />
+        <div style={{ position: "absolute", bottom: -4, right: 8, width: 13, height: 8, borderRadius: "50% 50% 40% 40%", background: "radial-gradient(circle at 40% 30%,#f7ca88,#c06020)", boxShadow: "0 3px 6px rgba(0,0,0,.4)" }} />
+        {/* Уровень */}
+        <div style={{ position: "absolute", top: -32, left: "50%", transform: "translateX(-50%)", fontFamily: "'Fredoka One',cursive", fontSize: 12, color: lvlColor, textShadow: `0 0 8px ${lvlColor}, 0 1px 4px #000`, whiteSpace: "nowrap", WebkitTextStroke: "0.5px #111" }}>
+          LVL {level}
+        </div>
+        {/* Ореол */}
+        <div style={{ position: "absolute", inset: -8, borderRadius: "50%", border: `2px solid ${lvlColor}44`, boxShadow: `0 0 18px ${lvlColor}44` }} />
+      </div>
+      {/* Луч выстрела */}
+      <div style={{ position: "absolute", bottom: 62, left: "50%", transform: "translateX(-50%)", width: 3, height: 28, background: "linear-gradient(0deg,rgba(255,200,0,.9),transparent)", borderRadius: 2 }} />
+    </div>
+  );
+}
+
 function Meteor3D({ m }: { m: Meteor }) {
   const theme = METEOR_THEMES[Math.min(m.maxHp - 1, METEOR_THEMES.length - 1)];
   const hpPct = m.hp / m.maxHp;
-  const crackOpacity = 1 - hpPct;
+  const crackLevel = Math.round((1 - hpPct) * 3); // 0-3 степень трещин
   const s = m.size;
+  // Цвет меняется при уроне
+  const damageShift = (1 - hpPct) * 40;
   return (
     <div style={{
       position: "absolute", left: `${m.x}%`, top: `${m.y}%`,
@@ -245,38 +303,56 @@ function Meteor3D({ m }: { m: Meteor }) {
       pointerEvents: m.exploding ? "none" : "auto",
     }}>
       {m.exploding ? (
-        <div className="explode3d" style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: s * 1.2 }}>💥</div>
+        <div className="explode3d" style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: s * 1.4 }}>💥</div>
       ) : (
         <>
-          {/* 3D сфера через радиальный градиент */}
+          {/* 3D сфера */}
           <div style={{
             width: "100%", height: "100%", borderRadius: "50%",
-            background: `radial-gradient(circle at 35% 30%, ${theme.light} 0%, ${theme.base} 45%, ${theme.dark} 100%)`,
-            boxShadow: `inset -${s*0.12}px -${s*0.12}px ${s*0.25}px rgba(0,0,0,.6), inset ${s*0.06}px ${s*0.06}px ${s*0.15}px rgba(255,255,255,.25), 0 0 ${s*0.5}px ${theme.glow}, 0 ${s*0.15}px ${s*0.3}px rgba(0,0,0,.5)`,
+            background: `radial-gradient(circle at 35% 28%, ${theme.light} 0%, ${theme.base} 42%, ${theme.dark} 100%)`,
+            boxShadow: `inset -${s*.13}px -${s*.13}px ${s*.28}px rgba(0,0,0,.65),
+              inset ${s*.07}px ${s*.07}px ${s*.16}px rgba(255,255,255,.28),
+              0 0 ${s*.6}px ${theme.glow},
+              0 ${s*.18}px ${s*.35}px rgba(0,0,0,.55)`,
             position: "relative", overflow: "hidden",
+            filter: crackLevel > 0 ? `hue-rotate(${damageShift}deg) brightness(${1 + crackLevel * 0.15})` : "none",
+            transition: "filter .1s",
           }}>
-            {/* Блик */}
-            <div style={{ position: "absolute", top: "12%", left: "18%", width: "35%", height: "28%", borderRadius: "50%", background: "radial-gradient(circle, rgba(255,255,255,.55) 0%, transparent 100%)", transform: "rotate(-20deg)" }} />
-            {/* Трещины при уроне */}
-            {crackOpacity > 0.1 && (
-              <div style={{ position: "absolute", inset: 0, opacity: crackOpacity, fontSize: s * 0.55, display: "flex", alignItems: "center", justifyContent: "center", filter: "grayscale(1) brightness(0)" }}>
-                {m.maxHp >= 3 ? "💢" : "✕"}
-              </div>
-            )}
+            {/* Главный блик */}
+            <div style={{ position: "absolute", top: "10%", left: "16%", width: "38%", height: "30%", borderRadius: "50%", background: "radial-gradient(circle,rgba(255,255,255,.6) 0%,transparent 100%)" }} />
+            {/* Маленький блик */}
+            <div style={{ position: "absolute", top: "18%", left: "55%", width: "16%", height: "14%", borderRadius: "50%", background: "radial-gradient(circle,rgba(255,255,255,.35) 0%,transparent 100%)" }} />
+            {/* Тёмное пятно (объём) */}
+            <div style={{ position: "absolute", bottom: "8%", right: "10%", width: "35%", height: "30%", borderRadius: "50%", background: "radial-gradient(circle,rgba(0,0,0,.45) 0%,transparent 100%)" }} />
+            {/* Трещины — SVG-линии через clip */}
+            {crackLevel >= 1 && <div style={{ position: "absolute", inset: 0, background: `repeating-linear-gradient(${45 + crackLevel * 30}deg, transparent 0%, transparent 48%, rgba(0,0,0,.6) 49%, transparent 50%)`, opacity: crackLevel * 0.35 }} />}
+            {crackLevel >= 2 && <div style={{ position: "absolute", inset: 0, background: `repeating-linear-gradient(${-30 + crackLevel * 20}deg, transparent 0%, transparent 44%, rgba(255,80,0,.5) 45%, transparent 46%)`, opacity: crackLevel * 0.3 }} />}
+            {crackLevel >= 3 && <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 50%, rgba(255,50,0,.4) 0%, transparent 60%)", animation: "hp-pulse .4s ease-in-out infinite" }} />}
           </div>
+
           {/* HP бар */}
-          <div style={{ position: "absolute", bottom: -8, left: "10%", width: "80%", height: 5, background: "rgba(0,0,0,.6)", borderRadius: 3, border: "1px solid rgba(255,255,255,.2)" }}>
-            <div style={{ width: `${hpPct * 100}%`, height: "100%", borderRadius: 3, transition: "width .1s", background: hpPct > 0.6 ? "#39FF14" : hpPct > 0.3 ? "#FFE600" : "#FF2D78", boxShadow: `0 0 6px ${hpPct > 0.6 ? "#39FF14" : hpPct > 0.3 ? "#FFE600" : "#FF2D78"}` }} />
+          <div style={{ position: "absolute", bottom: -10, left: "8%", width: "84%", height: 6, background: "rgba(0,0,0,.7)", borderRadius: 4, border: "1px solid rgba(255,255,255,.25)", overflow: "hidden" }}>
+            <div style={{
+              width: `${hpPct * 100}%`, height: "100%", borderRadius: 4,
+              background: hpPct > 0.6 ? "linear-gradient(90deg,#39FF14,#00FF88)" : hpPct > 0.3 ? "linear-gradient(90deg,#FFE600,#FF9500)" : "linear-gradient(90deg,#FF2D78,#FF0000)",
+              boxShadow: `0 0 8px ${hpPct > 0.6 ? "#39FF14" : hpPct > 0.3 ? "#FFE600" : "#FF2D78"}`,
+              transition: "width .08s, background .2s",
+            }} />
           </div>
-          {/* HP цифры */}
-          <div style={{ position: "absolute", top: -18, left: "50%", transform: "translateX(-50%)", fontFamily: "'Fredoka One',cursive", fontSize: 11, color: "#fff", textShadow: "0 1px 4px #000", whiteSpace: "nowrap" }}>
-            {"❤️".repeat(m.hp)}
+
+          {/* HP сердечки */}
+          <div style={{ position: "absolute", top: -20, left: "50%", transform: "translateX(-50%)", fontFamily: "'Fredoka One',cursive", fontSize: 10, textShadow: "0 1px 4px #000", whiteSpace: "nowrap", letterSpacing: 1 }}>
+            {Array.from({ length: m.maxHp }, (_, i) => (
+              <span key={i} style={{ opacity: i < m.hp ? 1 : 0.2, transition: "opacity .15s" }}>❤️</span>
+            ))}
           </div>
         </>
       )}
     </div>
   );
 }
+
+const XP_PER_LEVEL = 5; // метеоритов на уровень
 
 function GameScreen({ onBack, onEarnCoins }: { onBack: () => void; onEarnCoins: (c: number) => void }) {
   const [meteors, setMeteors] = useState<Meteor[]>([]);
@@ -289,6 +365,9 @@ function GameScreen({ onBack, onEarnCoins }: { onBack: () => void; onEarnCoins: 
   const [catX, setCatX] = useState(50);
   const [shake, setShake] = useState(false);
   const [paused, setPaused] = useState(false);
+  const [level, setLevel] = useState(1);
+  const [xp, setXp] = useState(0);
+  const [levelUp, setLevelUp] = useState(false);
   const areaRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(0);
   const catXRef = useRef(50);
@@ -354,6 +433,7 @@ function GameScreen({ onBack, onEarnCoins }: { onBack: () => void; onEarnCoins: 
 
       setBullets(prev => prev.map(b => ({ ...b, y: b.y - 4 })).filter(b => b.y > -5));
 
+      // Коллизии: читаем актуальные значения через ref
       setMeteors(mPrev => {
         setBullets(bPrev => {
           const hitBullets = new Set<number>();
@@ -368,24 +448,32 @@ function GameScreen({ onBack, onEarnCoins }: { onBack: () => void; onEarnCoins: 
                 const newHp = m.hp - 1;
                 if (newHp <= 0) {
                   const theme = METEOR_THEMES[Math.min(m.maxHp - 1, METEOR_THEMES.length - 1)];
-                  // Взрыв частиц
-                  const newParticles: Particle[] = Array.from({ length: 10 }, (_, i) => ({
+                  const newParticles: Particle[] = Array.from({ length: 12 }, (_, i) => ({
                     id: Date.now() + i + Math.random(),
                     x: m.x, y: m.y,
-                    dx: (Math.random() - 0.5) * 120,
-                    dy: (Math.random() - 0.5) * 120,
-                    color: [theme.base, theme.light, "#FFE600", "#FF9500"][Math.floor(Math.random() * 4)],
+                    dx: (Math.random() - 0.5) * 140,
+                    dy: (Math.random() - 0.5) * 140,
+                    color: [theme.base, theme.light, "#FFE600", "#FF9500", "#FF2D78"][Math.floor(Math.random() * 5)],
                   }));
                   setParticles(p => [...p, ...newParticles]);
                   setTimeout(() => setParticles(p => p.filter(pp => !newParticles.find(np => np.id === pp.id))), 700);
-
-                  const REWARD = 1_000_000_000;
-                  setScore(s => s + REWARD);
-                  onEarnCoins(REWARD);
+                  const BIGSTILLION = 1_000_000_000_000_000;
+                  setScore(s => s + BIGSTILLION);
+                  onEarnCoins(BIGSTILLION);
+                  setXp(prev => {
+                    const newXp = prev + 1;
+                    if (newXp >= XP_PER_LEVEL) {
+                      setLevel(l => l + 1);
+                      setLevelUp(true);
+                      setTimeout(() => setLevelUp(false), 1500);
+                      return 0;
+                    }
+                    return newXp;
+                  });
                   setFloatTexts(ft => [
                     ...ft,
-                    { id: Date.now() + Math.random(), x: m.x, y: m.y, text: `+1 МЛРД 🪙`, big: true },
-                    { id: Date.now() + Math.random() + 1, x: m.x, y: m.y - 8, text: `+1 МЛРД 💎`, big: true },
+                    { id: Date.now() + Math.random(), x: m.x, y: m.y, text: `+1 БИГ-СТИЛИОН 🪙`, big: true },
+                    { id: Date.now() + Math.random() + 1, x: m.x, y: m.y - 8, text: `+1 БИГ-СТИЛИОН 💎`, big: true },
                   ]);
                   setTimeout(() => setMeteors(p => p.filter(mm => mm.id !== m.id)), 450);
                   return { ...m, hp: 0, exploding: true };
@@ -395,8 +483,7 @@ function GameScreen({ onBack, onEarnCoins }: { onBack: () => void; onEarnCoins: 
             }
             return m;
           });
-          setBullets(bPrev.filter(b => !hitBullets.has(b.id)));
-          return newMeteors;
+          return bPrev.filter(b => !hitBullets.has(b.id));
         });
         return mPrev;
       });
@@ -414,16 +501,20 @@ function GameScreen({ onBack, onEarnCoins }: { onBack: () => void; onEarnCoins: 
   const restart = () => {
     setMeteors([]); setBullets([]); setScore(0); setHp(3);
     setGameOver(false); setFloatTexts([]); setCatX(50); setParticles([]);
+    setLevel(1); setXp(0);
   };
 
   const FOOD = ["🍖","🐟","🥩","🍗","🫙","🍣","🦴"];
   const foodEmoji = FOOD[Math.floor(Date.now() / 200) % FOOD.length];
 
   const fmtScore = (n: number) => {
-    if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}млрд`;
-    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}млн`;
+    if (n >= 1e15) return `${(n / 1e15).toFixed(1)} БС`;
+    if (n >= 1e12) return `${(n / 1e12).toFixed(1)}трлн`;
+    if (n >= 1e9) return `${(n / 1e9).toFixed(1)}млрд`;
+    if (n >= 1e6) return `${(n / 1e6).toFixed(1)}млн`;
     return n.toString();
   };
+  const xpPct = (xp / XP_PER_LEVEL) * 100;
 
   return (
     <div
@@ -437,15 +528,27 @@ function GameScreen({ onBack, onEarnCoins }: { onBack: () => void; onEarnCoins: 
       <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(1px 1px at 5% 8%,#fff 0%,transparent 100%),radial-gradient(1px 1px at 22% 20%,rgba(255,255,255,.9) 0%,transparent 100%),radial-gradient(2px 2px at 45% 5%,rgba(255,230,0,.9) 0%,transparent 100%),radial-gradient(1px 1px at 70% 15%,#fff 0%,transparent 100%),radial-gradient(1px 1px at 88% 30%,#fff 0%,transparent 100%),radial-gradient(1px 1px at 12% 42%,rgba(200,150,255,.8) 0%,transparent 100%),radial-gradient(1px 1px at 35% 55%,#fff 0%,transparent 100%),radial-gradient(1px 1px at 60% 65%,rgba(0,212,255,.7) 0%,transparent 100%),radial-gradient(1px 1px at 80% 50%,#fff 0%,transparent 100%),radial-gradient(1px 1px at 95% 70%,#fff 0%,transparent 100%),radial-gradient(1px 1px at 18% 75%,#fff 0%,transparent 100%),radial-gradient(2px 2px at 50% 85%,rgba(200,100,255,.6) 0%,transparent 100%)", pointerEvents: "none" }} />
 
       {/* HUD */}
-      <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-3 pt-3 pb-2" style={{ zIndex: 10, background: "linear-gradient(180deg,rgba(0,0,0,.7) 0%,transparent 100%)" }}>
-        <button onClick={() => setPaused(p => !p)} className="font-fredoka text-white text-lg w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(255,255,255,.12)", border: "2px solid rgba(255,255,255,.2)" }}>
-          {paused ? "▶" : "⏸"}
-        </button>
-        <div className="flex items-center gap-1">
-          {[1,2,3].map(i => <span key={i} className={`text-xl transition-all ${hp >= i ? "" : "opacity-15"}`}>❤️</span>)}
+      <div className="absolute top-0 left-0 right-0 px-3 pt-3 pb-2" style={{ zIndex: 10, background: "linear-gradient(180deg,rgba(0,0,0,.75) 0%,transparent 100%)" }}>
+        <div className="flex items-center justify-between mb-2">
+          <button onClick={() => setPaused(p => !p)} className="font-fredoka text-white text-lg w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(255,255,255,.12)", border: "2px solid rgba(255,255,255,.2)" }}>
+            {paused ? "▶" : "⏸"}
+          </button>
+          <div className="flex items-center gap-1">
+            {[1,2,3].map(i => <span key={i} className={`text-xl transition-all ${hp >= i ? "" : "opacity-15"}`}>❤️</span>)}
+          </div>
+          <div className="font-fredoka text-sm text-right" style={{ color: "#FFE600", textShadow: "0 0 10px rgba(255,220,0,.8)" }}>
+            🪙 {fmtScore(score)}
+          </div>
         </div>
-        <div className="font-fredoka text-base" style={{ color: "#FFE600", textShadow: "0 0 12px rgba(255,220,0,.8)" }}>
-          🪙 {fmtScore(score)}
+        {/* LVL + XP bar */}
+        <div className="flex items-center gap-2">
+          <div className="font-fredoka text-sm px-2 py-0.5 rounded-lg flex-shrink-0" style={{ background: "rgba(255,149,0,.25)", border: "1px solid rgba(255,149,0,.5)", color: "#FF9500" }}>
+            LVL {level}
+          </div>
+          <div className="flex-1 h-3 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.15)" }}>
+            <div style={{ width: `${xpPct}%`, height: "100%", background: "linear-gradient(90deg,#FFE600,#FF9500)", boxShadow: "0 0 8px rgba(255,180,0,.7)", borderRadius: 999, transition: "width .2s" }} />
+          </div>
+          <div className="font-fredoka text-xs" style={{ color: "rgba(255,255,255,.5)", flexShrink: 0 }}>{xp}/{XP_PER_LEVEL}</div>
         </div>
       </div>
 
@@ -489,16 +592,15 @@ function GameScreen({ onBack, onEarnCoins }: { onBack: () => void; onEarnCoins: 
         </div>
       ))}
 
-      {/* Кот */}
-      <div style={{ position: "absolute", bottom: "3%", left: `${catX}%`, transform: "translateX(-50%)", zIndex: 8, pointerEvents: "none" }}>
-        <div style={{ position: "relative", width: 68, height: 68 }}>
-          <img src={HERO_IMG} alt="кот" style={{ width: 68, height: 68, borderRadius: "50%", objectFit: "cover", border: "3px solid #FFE600", boxShadow: "0 0 20px rgba(255,230,0,.8), 0 0 40px rgba(255,149,0,.4)" }} />
-          {/* Ореол */}
-          <div style={{ position: "absolute", inset: -6, borderRadius: "50%", border: "2px solid rgba(255,230,0,.3)", boxShadow: "0 0 15px rgba(255,230,0,.3)" }} />
+      {/* 3D Кот */}
+      <Cat3D x={catX} level={level} />
+
+      {/* Level Up баннер */}
+      {levelUp && (
+        <div className="absolute left-1/2 billion-pop font-fredoka" style={{ top: "35%", transform: "translateX(-50%)", zIndex: 40, fontSize: 32, color: "#FFE600", textShadow: "0 0 30px rgba(255,200,0,.9), 0 2px 8px #000", WebkitTextStroke: "2px #111", whiteSpace: "nowrap", pointerEvents: "none" }}>
+          ⬆️ LEVEL UP! LVL {level} ⬆️
         </div>
-        {/* Луч стрельбы */}
-        <div style={{ position: "absolute", bottom: 66, left: "50%", transform: "translateX(-50%)", width: 3, height: 30, background: "linear-gradient(0deg,rgba(255,200,0,.9),transparent)", borderRadius: 2 }} />
-      </div>
+      )}
 
       {/* Пауза */}
       {paused && !gameOver && (
