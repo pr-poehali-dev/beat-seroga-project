@@ -123,13 +123,7 @@ export default function Index() {
   const [purchased, setPurchased] = useState<number[]>([2]);
   const [notification, setNotification] = useState<string | null>(null);
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCoins(c => c + 100);
-      setGems(g => g + 50);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
+
 
   const showNotif = (msg: string) => {
     setNotification(msg);
@@ -165,7 +159,7 @@ export default function Index() {
       <div style={{ maxWidth: 420, margin: "0 auto" }}>
         {screen === "menu" && <MenuScreen onPlay={() => setScreen("game")} onShop={() => setScreen("shop")} coins={coins} gems={gems} />}
         {screen === "shop" && <ShopScreen tab={shopTab} onTab={setShopTab} onBack={() => setScreen("menu")} coins={coins} gems={gems} purchased={purchased} onBuy={handleBuy} />}
-        {screen === "game" && <GameScreen onBack={() => setScreen("menu")} onEarnCoins={(c) => setCoins(prev => prev + c)} />}
+        {screen === "game" && <GameScreen onBack={() => setScreen("menu")} onEarnCoins={(c) => setCoins(prev => prev + c)} onEarnGems={(g) => setGems(prev => prev + g)} />}
       </div>
     </div>
   );
@@ -352,9 +346,13 @@ function Meteor3D({ m }: { m: Meteor }) {
   );
 }
 
-const XP_PER_LEVEL = 5; // метеоритов на уровень
+const XP_PER_LEVEL = 10; // метеоритов на уровень
+const MAX_LEVEL = 100;
+const BASE_METEOR_HP = 100;
+const HP_PER_LEVEL = 15;
+const BASE_CAT_DAMAGE = 50;
 
-function GameScreen({ onBack, onEarnCoins }: { onBack: () => void; onEarnCoins: (c: number) => void }) {
+function GameScreen({ onBack, onEarnCoins, onEarnGems }: { onBack: () => void; onEarnCoins: (c: number) => void; onEarnGems: (g: number) => void }) {
   const [meteors, setMeteors] = useState<Meteor[]>([]);
   const [bullets, setBullets] = useState<Bullet[]>([]);
   const [floatTexts, setFloatTexts] = useState<FloatText[]>([]);
@@ -368,28 +366,37 @@ function GameScreen({ onBack, onEarnCoins }: { onBack: () => void; onEarnCoins: 
   const [level, setLevel] = useState(1);
   const [xp, setXp] = useState(0);
   const [levelUp, setLevelUp] = useState(false);
+  const [damage, setDamage] = useState(BASE_CAT_DAMAGE);
   const areaRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(0);
   const catXRef = useRef(50);
   const pausedRef = useRef(false);
   const gameOverRef = useRef(false);
+  const levelRef = useRef(1);
+  const damageRef = useRef(BASE_CAT_DAMAGE);
   pausedRef.current = paused;
   gameOverRef.current = gameOver;
   catXRef.current = catX;
+  levelRef.current = level;
+  damageRef.current = damage;
 
   const spawnMeteor = useCallback(() => {
     if (pausedRef.current || gameOverRef.current) return;
-    const size = 40 + Math.random() * 36;
-    const maxHp = size > 66 ? 4 : size > 58 ? 3 : size > 48 ? 2 : 1;
-    const theme = METEOR_THEMES[Math.min(maxHp - 1, METEOR_THEMES.length - 1)];
+    const lv = levelRef.current;
+    const maxHp = BASE_METEOR_HP + (lv - 1) * HP_PER_LEVEL;
+    // Размер зависит от уровня метеорита — визуально больше на высоких уровнях
+    const size = 44 + Math.min(lv * 0.5, 20) + Math.random() * 16;
+    const themeIdx = lv <= 3 ? 0 : lv <= 10 ? 1 : lv <= 30 ? 2 : 3;
+    const theme = METEOR_THEMES[themeIdx];
     setMeteors(prev => [...prev, {
       id: nextId.current++,
       x: 6 + Math.random() * 84, y: -8,
-      size, speed: 0.9 + Math.random() * 1.4,
+      size,
+      speed: 0.4 + Math.random() * 0.5, // медленнее
       color: theme.base, shadowColor: theme.shadow,
       hp: maxHp, maxHp, exploding: false,
       rotAngle: Math.random() * 360,
-      rotSpeed: (Math.random() - 0.5) * 2,
+      rotSpeed: (Math.random() - 0.5) * 1.2,
     }]);
   }, []);
 
@@ -445,7 +452,8 @@ function GameScreen({ onBack, onEarnCoins }: { onBack: () => void; onEarnCoins: 
               const dy = Math.abs(b.y - m.y);
               if (dx < m.size * 0.4 && dy < m.size * 0.4) {
                 hitBullets.add(b.id);
-                const newHp = m.hp - 1;
+                const dmg = damageRef.current;
+                const newHp = m.hp - dmg;
                 if (newHp <= 0) {
                   const theme = METEOR_THEMES[Math.min(m.maxHp - 1, METEOR_THEMES.length - 1)];
                   const newParticles: Particle[] = Array.from({ length: 12 }, (_, i) => ({
@@ -457,23 +465,27 @@ function GameScreen({ onBack, onEarnCoins }: { onBack: () => void; onEarnCoins: 
                   }));
                   setParticles(p => [...p, ...newParticles]);
                   setTimeout(() => setParticles(p => p.filter(pp => !newParticles.find(np => np.id === pp.id))), 700);
-                  const BIGSTILLION = 1_000_000_000_000_000;
-                  setScore(s => s + BIGSTILLION);
-                  onEarnCoins(BIGSTILLION);
+                  setScore(s => s + 15);
+                  onEarnCoins(15);
+                  onEarnGems(1);
                   setXp(prev => {
                     const newXp = prev + 1;
                     if (newXp >= XP_PER_LEVEL) {
-                      setLevel(l => l + 1);
+                      setLevel(l => {
+                        const nextLv = Math.min(l + 1, MAX_LEVEL);
+                        // Каждый уровень +1 урон, стоит 1 монету (автоматически)
+                        setDamage(BASE_CAT_DAMAGE + nextLv - 1);
+                        return nextLv;
+                      });
                       setLevelUp(true);
-                      setTimeout(() => setLevelUp(false), 1500);
+                      setTimeout(() => setLevelUp(false), 1600);
                       return 0;
                     }
                     return newXp;
                   });
                   setFloatTexts(ft => [
                     ...ft,
-                    { id: Date.now() + Math.random(), x: m.x, y: m.y, text: `+1 БИГ-СТИЛИОН 🪙`, big: true },
-                    { id: Date.now() + Math.random() + 1, x: m.x, y: m.y - 8, text: `+1 БИГ-СТИЛИОН 💎`, big: true },
+                    { id: Date.now() + Math.random(), x: m.x, y: m.y, text: `+15 🪙  +1 💎`, big: false },
                   ]);
                   setTimeout(() => setMeteors(p => p.filter(mm => mm.id !== m.id)), 450);
                   return { ...m, hp: 0, exploding: true };
@@ -501,20 +513,13 @@ function GameScreen({ onBack, onEarnCoins }: { onBack: () => void; onEarnCoins: 
   const restart = () => {
     setMeteors([]); setBullets([]); setScore(0); setHp(3);
     setGameOver(false); setFloatTexts([]); setCatX(50); setParticles([]);
-    setLevel(1); setXp(0);
+    setLevel(1); setXp(0); setDamage(BASE_CAT_DAMAGE);
   };
 
   const FOOD = ["🍖","🐟","🥩","🍗","🫙","🍣","🦴"];
   const foodEmoji = FOOD[Math.floor(Date.now() / 200) % FOOD.length];
-
-  const fmtScore = (n: number) => {
-    if (n >= 1e15) return `${(n / 1e15).toFixed(1)} БС`;
-    if (n >= 1e12) return `${(n / 1e12).toFixed(1)}трлн`;
-    if (n >= 1e9) return `${(n / 1e9).toFixed(1)}млрд`;
-    if (n >= 1e6) return `${(n / 1e6).toFixed(1)}млн`;
-    return n.toString();
-  };
   const xpPct = (xp / XP_PER_LEVEL) * 100;
+  const meteorHp = BASE_METEOR_HP + (level - 1) * HP_PER_LEVEL;
 
   return (
     <div
@@ -536,14 +541,18 @@ function GameScreen({ onBack, onEarnCoins }: { onBack: () => void; onEarnCoins: 
           <div className="flex items-center gap-1">
             {[1,2,3].map(i => <span key={i} className={`text-xl transition-all ${hp >= i ? "" : "opacity-15"}`}>❤️</span>)}
           </div>
-          <div className="font-fredoka text-sm text-right" style={{ color: "#FFE600", textShadow: "0 0 10px rgba(255,220,0,.8)" }}>
-            🪙 {fmtScore(score)}
+          <div className="flex flex-col items-end gap-0.5">
+            <div className="font-fredoka text-sm" style={{ color: "#FFE600", textShadow: "0 0 10px rgba(255,220,0,.8)" }}>🪙 {score}</div>
+            <div className="font-fredoka text-xs" style={{ color: "#FF9500" }}>⚔️ {damage} урон</div>
           </div>
         </div>
         {/* LVL + XP bar */}
         <div className="flex items-center gap-2">
           <div className="font-fredoka text-sm px-2 py-0.5 rounded-lg flex-shrink-0" style={{ background: "rgba(255,149,0,.25)", border: "1px solid rgba(255,149,0,.5)", color: "#FF9500" }}>
-            LVL {level}
+            LVL {level}/{MAX_LEVEL}
+          </div>
+          <div className="font-fredoka text-xs px-2 py-0.5 rounded-lg flex-shrink-0" style={{ background: "rgba(255,45,120,.2)", border: "1px solid rgba(255,45,120,.4)", color: "#FF2D78" }}>
+            ☄️ {meteorHp} HP
           </div>
           <div className="flex-1 h-3 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.15)" }}>
             <div style={{ width: `${xpPct}%`, height: "100%", background: "linear-gradient(90deg,#FFE600,#FF9500)", boxShadow: "0 0 8px rgba(255,180,0,.7)", borderRadius: 999, transition: "width .2s" }} />
@@ -616,8 +625,9 @@ function GameScreen({ onBack, onEarnCoins }: { onBack: () => void; onEarnCoins: 
         <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: "rgba(0,0,0,.85)", zIndex: 30, backdropFilter: "blur(6px)" }}>
           <div style={{ fontSize: 64 }}>💀</div>
           <div className="font-fredoka text-4xl title-stroke mt-2 mb-1" style={{ color: "#FF2D78" }}>GAME OVER</div>
-          <div className="font-fredoka text-2xl mb-1" style={{ color: "#FFE600" }}>Счёт: {fmtScore(score)}</div>
-          <div className="font-nunito text-white/55 text-sm mb-6">🪙 {fmtScore(score)} монет заработано!</div>
+          <div className="font-fredoka text-2xl mb-1" style={{ color: "#FFE600" }}>🪙 {score} монет</div>
+          <div className="font-nunito text-white/55 text-sm mb-1">Уровень достигнут: {level} / {MAX_LEVEL}</div>
+          <div className="font-nunito text-white/55 text-sm mb-5">Урон кота: ⚔️ {damage}</div>
           <button onClick={restart} className="cloud-btn px-10 py-4 rounded-2xl font-fredoka text-2xl mb-3">🔄 Заново</button>
           <button onClick={onBack} className="font-fredoka text-white/70 text-lg px-6 py-2 rounded-xl" style={{ background: "rgba(255,255,255,.1)", border: "2px solid rgba(255,255,255,.2)" }}>← Меню</button>
         </div>
