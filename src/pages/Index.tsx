@@ -90,6 +90,11 @@ interface Meteor {
   maxHp: number;
   exploding: boolean;
 }
+interface Bullet {
+  id: number;
+  x: number;
+  y: number;
+}
 interface FloatText { id: number; x: number; y: number; text: string; }
 
 const METEOR_EMOJIS = ["☄️","🪨","💫","🌑","🌒"];
@@ -212,6 +217,7 @@ function MenuTile({ icon, label }: { icon: string; label: string }) {
 
 function GameScreen({ onBack, onEarnCoins }: { onBack: () => void; onEarnCoins: (c: number) => void }) {
   const [meteors, setMeteors] = useState<Meteor[]>([]);
+  const [bullets, setBullets] = useState<Bullet[]>([]);
   const [floatTexts, setFloatTexts] = useState<FloatText[]>([]);
   const [score, setScore] = useState(0);
   const [hp, setHp] = useState(3);
@@ -221,11 +227,16 @@ function GameScreen({ onBack, onEarnCoins }: { onBack: () => void; onEarnCoins: 
   const [paused, setPaused] = useState(false);
   const areaRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(0);
+  const catXRef = useRef(50);
   const pausedRef = useRef(false);
+  const gameOverRef = useRef(false);
   pausedRef.current = paused;
+  gameOverRef.current = gameOver;
+  catXRef.current = catX;
 
+  // Spawn meteors
   const spawnMeteor = useCallback(() => {
-    if (pausedRef.current) return;
+    if (pausedRef.current || gameOverRef.current) return;
     const size = 36 + Math.random() * 32;
     const hp = size > 55 ? 3 : size > 44 ? 2 : 1;
     setMeteors(prev => [...prev, {
@@ -235,21 +246,33 @@ function GameScreen({ onBack, onEarnCoins }: { onBack: () => void; onEarnCoins: 
       size,
       speed: 1.2 + Math.random() * 1.8,
       emoji: METEOR_EMOJIS[Math.floor(Math.random() * METEOR_EMOJIS.length)],
-      hp,
-      maxHp: hp,
-      exploding: false,
+      hp, maxHp: hp, exploding: false,
     }]);
+  }, []);
+
+  // Spawn bullets from cat
+  const spawnBullet = useCallback(() => {
+    if (pausedRef.current || gameOverRef.current) return;
+    setBullets(prev => [
+      ...prev,
+      { id: nextId.current++, x: catXRef.current, y: 88 },
+      { id: nextId.current++, x: catXRef.current - 3, y: 88 },
+      { id: nextId.current++, x: catXRef.current + 3, y: 88 },
+    ]);
   }, []);
 
   useEffect(() => {
     if (gameOver) return;
-    const interval = setInterval(spawnMeteor, 900);
-    return () => clearInterval(interval);
-  }, [gameOver, spawnMeteor]);
+    const mi = setInterval(spawnMeteor, 900);
+    const bi = setInterval(spawnBullet, 300);
+    return () => { clearInterval(mi); clearInterval(bi); };
+  }, [gameOver, spawnMeteor, spawnBullet]);
 
+  // Move bullets + check collisions
   useEffect(() => {
     if (gameOver || paused) return;
     const tick = setInterval(() => {
+      // Move meteors down
       setMeteors(prev => {
         const updated: Meteor[] = [];
         let missed = 0;
@@ -260,36 +283,58 @@ function GameScreen({ onBack, onEarnCoins }: { onBack: () => void; onEarnCoins: 
           else updated.push({ ...m, y: newY });
         }
         if (missed > 0) {
-          setHp(h => {
-            const next = h - missed;
-            if (next <= 0) setGameOver(true);
-            return Math.max(0, next);
-          });
+          setHp(h => { const next = h - missed; if (next <= 0) setGameOver(true); return Math.max(0, next); });
           setShake(true);
           setTimeout(() => setShake(false), 350);
         }
         return updated;
       });
+
+      // Move bullets up + collision
+      setBullets(prev => {
+        const alive: Bullet[] = [];
+        for (const b of prev) {
+          const ny = b.y - 3.5;
+          if (ny < -5) continue;
+          alive.push({ ...b, y: ny });
+        }
+        return alive;
+      });
+
+      // Collision detection
+      setMeteors(mPrev => {
+        setBullets(bPrev => {
+          const hitBullets = new Set<number>();
+          const newMeteors = mPrev.map(m => {
+            if (m.exploding) return m;
+            for (const b of bPrev) {
+              if (hitBullets.has(b.id)) continue;
+              const dx = Math.abs(b.x - m.x);
+              const dy = Math.abs(b.y - m.y);
+              const hitRadius = m.size * 0.38;
+              if (dx < hitRadius && dy < hitRadius) {
+                hitBullets.add(b.id);
+                const newHp = m.hp - 1;
+                if (newHp <= 0) {
+                  const pts = m.maxHp * 10;
+                  setScore(s => s + pts);
+                  onEarnCoins(pts);
+                  setFloatTexts(ft => [...ft, { id: Date.now() + Math.random(), x: m.x, y: m.y, text: `+${pts}🪙` }]);
+                  setTimeout(() => setMeteors(p => p.filter(mm => mm.id !== m.id)), 380);
+                  return { ...m, hp: 0, exploding: true };
+                }
+                return { ...m, hp: newHp };
+              }
+            }
+            return m;
+          });
+          return bPrev.filter(b => !hitBullets.has(b.id));
+        });
+        return mPrev;
+      });
     }, 40);
     return () => clearInterval(tick);
-  }, [gameOver, paused]);
-
-  const hitMeteor = (id: number, x: number, y: number) => {
-    setMeteors(prev => prev.map(m => {
-      if (m.id !== id) return m;
-      const newHp = m.hp - 1;
-      if (newHp <= 0) {
-        const pts = m.maxHp * 10;
-        setScore(s => s + pts);
-        onEarnCoins(pts);
-        setFloatTexts(ft => [...ft, { id: Date.now(), x, y, text: `+${pts}🪙` }]);
-        setTimeout(() => setMeteors(p => p.filter(mm => mm.id !== id)), 380);
-        return { ...m, hp: 0, exploding: true };
-      }
-      setFloatTexts(ft => [...ft, { id: Date.now(), x, y, text: "💥" }]);
-      return { ...m, hp: newHp };
-    }));
-  };
+  }, [gameOver, paused, onEarnCoins]);
 
   const handleCatDrag = (e: React.TouchEvent | React.MouseEvent) => {
     if (!areaRef.current) return;
@@ -300,8 +345,12 @@ function GameScreen({ onBack, onEarnCoins }: { onBack: () => void; onEarnCoins: 
   };
 
   const restart = () => {
-    setMeteors([]); setScore(0); setHp(3); setGameOver(false); setFloatTexts([]); setCatX(50);
+    setMeteors([]); setBullets([]); setScore(0); setHp(3);
+    setGameOver(false); setFloatTexts([]); setCatX(50);
   };
+
+  const FOOD_EMOJIS = ["🍖","🐟","🥩","🍗","🫙"];
+  const foodEmoji = FOOD_EMOJIS[Math.floor(score / 50) % FOOD_EMOJIS.length];
 
   return (
     <div
@@ -316,12 +365,12 @@ function GameScreen({ onBack, onEarnCoins }: { onBack: () => void; onEarnCoins: 
 
       {/* HUD */}
       <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-3 pb-2" style={{ zIndex: 10, background: "linear-gradient(180deg,rgba(0,0,0,.6) 0%,transparent 100%)" }}>
-        <button onClick={() => { setPaused(p => !p); }} className="font-fredoka text-white text-xl w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(255,255,255,.15)", border: "2px solid rgba(255,255,255,.2)" }}>
+        <button onClick={() => setPaused(p => !p)} className="font-fredoka text-white text-xl w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(255,255,255,.15)", border: "2px solid rgba(255,255,255,.2)" }}>
           {paused ? "▶" : "⏸"}
         </button>
         <div className="flex items-center gap-1">
           {[1,2,3].map(i => (
-            <span key={i} className={`text-2xl transition-all ${hp >= i ? "" : "opacity-20"} ${hp < i && hp >= i - 1 ? "hp-pulse" : ""}`}>❤️</span>
+            <span key={i} className={`text-2xl transition-all ${hp >= i ? "" : "opacity-20"}`}>❤️</span>
           ))}
         </div>
         <div className="font-fredoka text-yellow-400 text-xl" style={{ textShadow: "0 2px 8px rgba(255,200,0,.6)" }}>
@@ -329,24 +378,29 @@ function GameScreen({ onBack, onEarnCoins }: { onBack: () => void; onEarnCoins: 
         </div>
       </div>
 
+      {/* Bullets (food) */}
+      {bullets.map(b => (
+        <div key={b.id} style={{
+          position: "absolute", left: `${b.x}%`, top: `${b.y}%`,
+          fontSize: 18, transform: "translate(-50%,-50%)",
+          zIndex: 6, pointerEvents: "none",
+          filter: "drop-shadow(0 0 6px rgba(255,200,0,.8))",
+        }}>
+          {foodEmoji}
+        </div>
+      ))}
+
       {/* Meteors */}
       {meteors.map(m => (
         <div
           key={m.id}
-          onClick={() => !m.exploding && hitMeteor(m.id, m.x, m.y)}
-          onTouchStart={(e) => { e.preventDefault(); if (!m.exploding) hitMeteor(m.id, m.x, m.y); }}
           className={m.exploding ? "explode" : ""}
           style={{
-            position: "absolute",
-            left: `${m.x}%`,
-            top: `${m.y}%`,
-            fontSize: m.size,
-            transform: "translate(-50%,-50%)",
-            cursor: "pointer",
+            position: "absolute", left: `${m.x}%`, top: `${m.y}%`,
+            fontSize: m.size, transform: "translate(-50%,-50%)",
             zIndex: 5,
             filter: m.exploding ? "brightness(3)" : m.hp < m.maxHp ? "brightness(1.5) hue-rotate(30deg)" : "none",
-            transition: "filter .1s",
-            userSelect: "none",
+            transition: "filter .1s", userSelect: "none", pointerEvents: "none",
           }}
         >
           {m.exploding ? "💥" : m.emoji}
@@ -360,20 +414,21 @@ function GameScreen({ onBack, onEarnCoins }: { onBack: () => void; onEarnCoins: 
 
       {/* Float texts */}
       {floatTexts.map(ft => (
-        <div key={ft.id} className="score-pop font-fredoka" style={{ position: "absolute", left: `${ft.x}%`, top: `${ft.y}%`, transform: "translate(-50%,-50%)", color: "#FFE600", fontSize: 20, zIndex: 20, textShadow: "0 2px 8px rgba(0,0,0,.8)", pointerEvents: "none" }}
+        <div key={ft.id} className="score-pop font-fredoka"
+          style={{ position: "absolute", left: `${ft.x}%`, top: `${ft.y}%`, transform: "translate(-50%,-50%)", color: "#FFE600", fontSize: 20, zIndex: 20, textShadow: "0 2px 8px rgba(0,0,0,.8)", pointerEvents: "none" }}
           onAnimationEnd={() => setFloatTexts(p => p.filter(f => f.id !== ft.id))}>
           {ft.text}
         </div>
       ))}
 
       {/* Cat */}
-      <div style={{ position: "absolute", bottom: "6%", left: `${catX}%`, transform: "translateX(-50%)", zIndex: 8, pointerEvents: "none" }}>
+      <div style={{ position: "absolute", bottom: "4%", left: `${catX}%`, transform: "translateX(-50%)", zIndex: 8, pointerEvents: "none" }}>
         <div style={{ position: "relative", width: 64, height: 64 }}>
           <img src={HERO_IMG} alt="кот" style={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover", filter: "drop-shadow(0 0 12px rgba(255,230,0,.7))", border: "3px solid #FFE600" }} />
-          <div style={{ position: "absolute", top: -4, left: -4, right: -4, bottom: -4, borderRadius: "50%", background: "radial-gradient(circle,rgba(255,230,0,.25) 0%,transparent 70%)", animation: "float-anim 1.5s ease-in-out infinite" }} />
+          <div style={{ position: "absolute", top: -4, left: -4, right: -4, bottom: -4, borderRadius: "50%", background: "radial-gradient(circle,rgba(255,230,0,.2) 0%,transparent 70%)" }} />
         </div>
-        {/* Laser beam indicator */}
-        <div style={{ position: "absolute", bottom: 60, left: "50%", transform: "translateX(-50%)", width: 3, height: 40, background: "linear-gradient(0deg,rgba(255,230,0,.9),rgba(255,230,0,0))", borderRadius: 2 }} />
+        {/* Корм-поток визуально */}
+        <div style={{ position: "absolute", bottom: 62, left: "50%", transform: "translateX(-50%)", width: 2, height: 20, background: "linear-gradient(0deg,rgba(255,200,0,.8),transparent)", borderRadius: 2 }} />
       </div>
 
       {/* Pause overlay */}
@@ -399,8 +454,8 @@ function GameScreen({ onBack, onEarnCoins }: { onBack: () => void; onEarnCoins: 
 
       {/* Bottom hint */}
       {!gameOver && !paused && (
-        <div className="absolute bottom-1 left-0 right-0 text-center font-nunito text-white/30 text-xs" style={{ zIndex: 6 }}>
-          Двигай мышкой / пальцем • Тапай по метеоритам
+        <div className="absolute bottom-0.5 left-0 right-0 text-center font-nunito text-white/30 text-xs" style={{ zIndex: 6 }}>
+          Двигай пальцем влево / вправо
         </div>
       )}
     </div>
