@@ -68,15 +68,21 @@ const GLOBAL_STYLES = `
   .spin-bg { animation: spin-bg 8s linear infinite; }
   .level-bar { background: linear-gradient(90deg,#39FF14,#00FF88); box-shadow: 0 0 8px rgba(57,255,20,.6); }
   .stars-bg { position:fixed;inset:0;pointer-events:none;z-index:0;background-image:radial-gradient(1px 1px at 8% 15%,rgba(255,255,255,.9) 0%,transparent 100%),radial-gradient(1px 1px at 25% 60%,rgba(255,255,255,.7) 0%,transparent 100%),radial-gradient(2px 2px at 48% 12%,rgba(255,230,0,.8) 0%,transparent 100%),radial-gradient(1px 1px at 72% 42%,rgba(255,255,255,.9) 0%,transparent 100%),radial-gradient(1px 1px at 88% 78%,rgba(255,255,255,.6) 0%,transparent 100%),radial-gradient(1px 1px at 18% 82%,rgba(255,255,255,.7) 0%,transparent 100%),radial-gradient(2px 2px at 92% 8%,rgba(0,212,255,.7) 0%,transparent 100%),radial-gradient(1px 1px at 55% 92%,rgba(255,255,255,.5) 0%,transparent 100%),radial-gradient(1px 1px at 35% 35%,rgba(200,100,255,.6) 0%,transparent 100%),radial-gradient(1px 1px at 65% 70%,rgba(255,255,255,.8) 0%,transparent 100%); }
-  @keyframes meteor-fall { 0%{transform:translateY(-80px) rotate(0deg);}100%{transform:translateY(110vh) rotate(360deg);} }
-  @keyframes explode { 0%{transform:scale(1);opacity:1;}100%{transform:scale(3);opacity:0;} }
-  .explode { animation: explode .4s ease-out forwards; pointer-events:none; }
-  @keyframes score-pop { 0%{transform:translateY(0) scale(1);opacity:1;}100%{transform:translateY(-50px) scale(1.3);opacity:0;} }
-  .score-pop { animation: score-pop .7s ease-out forwards; pointer-events:none; }
-  @keyframes shake { 0%,100%{transform:translateX(0);}25%{transform:translateX(-6px);}75%{transform:translateX(6px);} }
+  @keyframes explode3d { 0%{transform:translate(-50%,-50%) scale(1) rotateX(0deg);opacity:1;} 60%{transform:translate(-50%,-60%) scale(2.5) rotateX(20deg);opacity:.7;} 100%{transform:translate(-50%,-70%) scale(4) rotateX(40deg);opacity:0;} }
+  .explode3d { animation: explode3d .5s ease-out forwards; pointer-events:none; }
+  @keyframes score-pop { 0%{transform:translateY(0) scale(1);opacity:1;}100%{transform:translateY(-60px) scale(1.4);opacity:0;} }
+  .score-pop { animation: score-pop .9s ease-out forwards; pointer-events:none; }
+  @keyframes shake { 0%,100%{transform:translateX(0);}25%{transform:translateX(-8px);}75%{transform:translateX(8px);} }
   .shake { animation: shake .3s ease-in-out; }
-  @keyframes hp-pulse { 0%,100%{opacity:1;}50%{opacity:.4;} }
-  .hp-pulse { animation: hp-pulse .3s ease-in-out 3; }
+  @keyframes meteor-spin { 0%{transform:translate(-50%,-50%) rotateY(0deg) rotateZ(0deg);}100%{transform:translate(-50%,-50%) rotateY(360deg) rotateZ(360deg);} }
+  @keyframes hit-flash { 0%,100%{filter:brightness(1);}50%{filter:brightness(3) saturate(2);} }
+  .hit-flash { animation: hit-flash .15s ease-in-out; }
+  @keyframes billion-pop { 0%{transform:translate(-50%,-50%) scale(0.5);opacity:0;} 20%{transform:translate(-50%,-60%) scale(1.4);opacity:1;} 80%{transform:translate(-50%,-120%) scale(1.1);opacity:1;} 100%{transform:translate(-50%,-150%) scale(1);opacity:0;} }
+  .billion-pop { animation: billion-pop 1.4s ease-out forwards; pointer-events:none; }
+  @keyframes ring-burst { 0%{transform:translate(-50%,-50%) scale(0.2);opacity:1;} 100%{transform:translate(-50%,-50%) scale(3);opacity:0;} }
+  .ring-burst { animation: ring-burst .5s ease-out forwards; pointer-events:none; }
+  @keyframes particle-fly { 0%{opacity:1;transform:translate(0,0) scale(1);} 100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(0);} }
+  .particle { animation: particle-fly .6s ease-out forwards; pointer-events:none; }
 `;
 
 interface Meteor {
@@ -85,19 +91,29 @@ interface Meteor {
   y: number;
   size: number;
   speed: number;
-  emoji: string;
+  color: string;
+  shadowColor: string;
   hp: number;
   maxHp: number;
   exploding: boolean;
+  rotAngle: number;
+  rotSpeed: number;
 }
 interface Bullet {
   id: number;
   x: number;
   y: number;
 }
-interface FloatText { id: number; x: number; y: number; text: string; }
+interface FloatText { id: number; x: number; y: number; text: string; big?: boolean; }
+interface Particle { id: number; x: number; y: number; dx: number; dy: number; color: string; }
 
-const METEOR_EMOJIS = ["☄️","🪨","💫","🌑","🌒"];
+// 3D цвета метеоритов по уровню HP
+const METEOR_THEMES = [
+  { base: "#8B4513", light: "#D2691E", dark: "#4A1A00", shadow: "rgba(139,69,19,.8)", glow: "rgba(255,100,0,.6)" },   // hp1 — коричневый
+  { base: "#2E5BBA", light: "#5B8FFF", dark: "#0D2E6E", shadow: "rgba(46,91,186,.8)", glow: "rgba(91,143,255,.7)" },  // hp2 — синий
+  { base: "#8B008B", light: "#DD44DD", dark: "#440044", shadow: "rgba(139,0,139,.8)", glow: "rgba(221,68,221,.7)" },   // hp3 — фиолетовый
+  { base: "#8B6914", light: "#FFD700", dark: "#4A3000", shadow: "rgba(255,180,0,.9)", glow: "rgba(255,230,0,.9)" },    // hp4 — золотой (босс)
+];
 
 export default function Index() {
   const [screen, setScreen] = useState<Screen>("menu");
@@ -215,10 +231,58 @@ function MenuTile({ icon, label }: { icon: string; label: string }) {
 
 // ─── GAME SCREEN ────────────────────────────────────────────────────────────
 
+function Meteor3D({ m }: { m: Meteor }) {
+  const theme = METEOR_THEMES[Math.min(m.maxHp - 1, METEOR_THEMES.length - 1)];
+  const hpPct = m.hp / m.maxHp;
+  const crackOpacity = 1 - hpPct;
+  const s = m.size;
+  return (
+    <div style={{
+      position: "absolute", left: `${m.x}%`, top: `${m.y}%`,
+      width: s, height: s,
+      transform: `translate(-50%,-50%) rotate(${m.rotAngle}deg)`,
+      zIndex: 5,
+      pointerEvents: m.exploding ? "none" : "auto",
+    }}>
+      {m.exploding ? (
+        <div className="explode3d" style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: s * 1.2 }}>💥</div>
+      ) : (
+        <>
+          {/* 3D сфера через радиальный градиент */}
+          <div style={{
+            width: "100%", height: "100%", borderRadius: "50%",
+            background: `radial-gradient(circle at 35% 30%, ${theme.light} 0%, ${theme.base} 45%, ${theme.dark} 100%)`,
+            boxShadow: `inset -${s*0.12}px -${s*0.12}px ${s*0.25}px rgba(0,0,0,.6), inset ${s*0.06}px ${s*0.06}px ${s*0.15}px rgba(255,255,255,.25), 0 0 ${s*0.5}px ${theme.glow}, 0 ${s*0.15}px ${s*0.3}px rgba(0,0,0,.5)`,
+            position: "relative", overflow: "hidden",
+          }}>
+            {/* Блик */}
+            <div style={{ position: "absolute", top: "12%", left: "18%", width: "35%", height: "28%", borderRadius: "50%", background: "radial-gradient(circle, rgba(255,255,255,.55) 0%, transparent 100%)", transform: "rotate(-20deg)" }} />
+            {/* Трещины при уроне */}
+            {crackOpacity > 0.1 && (
+              <div style={{ position: "absolute", inset: 0, opacity: crackOpacity, fontSize: s * 0.55, display: "flex", alignItems: "center", justifyContent: "center", filter: "grayscale(1) brightness(0)" }}>
+                {m.maxHp >= 3 ? "💢" : "✕"}
+              </div>
+            )}
+          </div>
+          {/* HP бар */}
+          <div style={{ position: "absolute", bottom: -8, left: "10%", width: "80%", height: 5, background: "rgba(0,0,0,.6)", borderRadius: 3, border: "1px solid rgba(255,255,255,.2)" }}>
+            <div style={{ width: `${hpPct * 100}%`, height: "100%", borderRadius: 3, transition: "width .1s", background: hpPct > 0.6 ? "#39FF14" : hpPct > 0.3 ? "#FFE600" : "#FF2D78", boxShadow: `0 0 6px ${hpPct > 0.6 ? "#39FF14" : hpPct > 0.3 ? "#FFE600" : "#FF2D78"}` }} />
+          </div>
+          {/* HP цифры */}
+          <div style={{ position: "absolute", top: -18, left: "50%", transform: "translateX(-50%)", fontFamily: "'Fredoka One',cursive", fontSize: 11, color: "#fff", textShadow: "0 1px 4px #000", whiteSpace: "nowrap" }}>
+            {"❤️".repeat(m.hp)}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function GameScreen({ onBack, onEarnCoins }: { onBack: () => void; onEarnCoins: (c: number) => void }) {
   const [meteors, setMeteors] = useState<Meteor[]>([]);
   const [bullets, setBullets] = useState<Bullet[]>([]);
   const [floatTexts, setFloatTexts] = useState<FloatText[]>([]);
+  const [particles, setParticles] = useState<Particle[]>([]);
   const [score, setScore] = useState(0);
   const [hp, setHp] = useState(3);
   const [gameOver, setGameOver] = useState(false);
@@ -234,74 +298,62 @@ function GameScreen({ onBack, onEarnCoins }: { onBack: () => void; onEarnCoins: 
   gameOverRef.current = gameOver;
   catXRef.current = catX;
 
-  // Spawn meteors
   const spawnMeteor = useCallback(() => {
     if (pausedRef.current || gameOverRef.current) return;
-    const size = 36 + Math.random() * 32;
-    const hp = size > 55 ? 3 : size > 44 ? 2 : 1;
+    const size = 40 + Math.random() * 36;
+    const maxHp = size > 66 ? 4 : size > 58 ? 3 : size > 48 ? 2 : 1;
+    const theme = METEOR_THEMES[Math.min(maxHp - 1, METEOR_THEMES.length - 1)];
     setMeteors(prev => [...prev, {
       id: nextId.current++,
-      x: 5 + Math.random() * 85,
-      y: -10,
-      size,
-      speed: 1.2 + Math.random() * 1.8,
-      emoji: METEOR_EMOJIS[Math.floor(Math.random() * METEOR_EMOJIS.length)],
-      hp, maxHp: hp, exploding: false,
+      x: 6 + Math.random() * 84, y: -8,
+      size, speed: 0.9 + Math.random() * 1.4,
+      color: theme.base, shadowColor: theme.shadow,
+      hp: maxHp, maxHp, exploding: false,
+      rotAngle: Math.random() * 360,
+      rotSpeed: (Math.random() - 0.5) * 2,
     }]);
   }, []);
 
-  // Spawn bullets from cat
   const spawnBullet = useCallback(() => {
     if (pausedRef.current || gameOverRef.current) return;
+    const cx = catXRef.current;
     setBullets(prev => [
       ...prev,
-      { id: nextId.current++, x: catXRef.current, y: 88 },
-      { id: nextId.current++, x: catXRef.current - 3, y: 88 },
-      { id: nextId.current++, x: catXRef.current + 3, y: 88 },
+      { id: nextId.current++, x: cx, y: 86 },
+      { id: nextId.current++, x: cx - 4, y: 86 },
+      { id: nextId.current++, x: cx + 4, y: 86 },
+      { id: nextId.current++, x: cx - 8, y: 88 },
+      { id: nextId.current++, x: cx + 8, y: 88 },
     ]);
   }, []);
 
   useEffect(() => {
     if (gameOver) return;
     const mi = setInterval(spawnMeteor, 900);
-    const bi = setInterval(spawnBullet, 300);
+    const bi = setInterval(spawnBullet, 250);
     return () => { clearInterval(mi); clearInterval(bi); };
   }, [gameOver, spawnMeteor, spawnBullet]);
 
-  // Move bullets + check collisions
   useEffect(() => {
     if (gameOver || paused) return;
     const tick = setInterval(() => {
-      // Move meteors down
       setMeteors(prev => {
-        const updated: Meteor[] = [];
         let missed = 0;
-        for (const m of prev) {
-          if (m.exploding) { updated.push(m); continue; }
+        const next = prev.map(m => {
+          if (m.exploding) return m;
           const newY = m.y + m.speed;
-          if (newY > 95) { missed++; }
-          else updated.push({ ...m, y: newY });
-        }
+          if (newY > 96) { missed++; return null; }
+          return { ...m, y: newY, rotAngle: m.rotAngle + m.rotSpeed };
+        }).filter(Boolean) as Meteor[];
         if (missed > 0) {
-          setHp(h => { const next = h - missed; if (next <= 0) setGameOver(true); return Math.max(0, next); });
-          setShake(true);
-          setTimeout(() => setShake(false), 350);
+          setHp(h => { const n = h - missed; if (n <= 0) setGameOver(true); return Math.max(0, n); });
+          setShake(true); setTimeout(() => setShake(false), 350);
         }
-        return updated;
+        return next;
       });
 
-      // Move bullets up + collision
-      setBullets(prev => {
-        const alive: Bullet[] = [];
-        for (const b of prev) {
-          const ny = b.y - 3.5;
-          if (ny < -5) continue;
-          alive.push({ ...b, y: ny });
-        }
-        return alive;
-      });
+      setBullets(prev => prev.map(b => ({ ...b, y: b.y - 4 })).filter(b => b.y > -5));
 
-      // Collision detection
       setMeteors(mPrev => {
         setBullets(bPrev => {
           const hitBullets = new Set<number>();
@@ -311,16 +363,31 @@ function GameScreen({ onBack, onEarnCoins }: { onBack: () => void; onEarnCoins: 
               if (hitBullets.has(b.id)) continue;
               const dx = Math.abs(b.x - m.x);
               const dy = Math.abs(b.y - m.y);
-              const hitRadius = m.size * 0.38;
-              if (dx < hitRadius && dy < hitRadius) {
+              if (dx < m.size * 0.4 && dy < m.size * 0.4) {
                 hitBullets.add(b.id);
                 const newHp = m.hp - 1;
                 if (newHp <= 0) {
-                  const pts = m.maxHp * 10;
-                  setScore(s => s + pts);
-                  onEarnCoins(pts);
-                  setFloatTexts(ft => [...ft, { id: Date.now() + Math.random(), x: m.x, y: m.y, text: `+${pts}🪙` }]);
-                  setTimeout(() => setMeteors(p => p.filter(mm => mm.id !== m.id)), 380);
+                  const theme = METEOR_THEMES[Math.min(m.maxHp - 1, METEOR_THEMES.length - 1)];
+                  // Взрыв частиц
+                  const newParticles: Particle[] = Array.from({ length: 10 }, (_, i) => ({
+                    id: Date.now() + i + Math.random(),
+                    x: m.x, y: m.y,
+                    dx: (Math.random() - 0.5) * 120,
+                    dy: (Math.random() - 0.5) * 120,
+                    color: [theme.base, theme.light, "#FFE600", "#FF9500"][Math.floor(Math.random() * 4)],
+                  }));
+                  setParticles(p => [...p, ...newParticles]);
+                  setTimeout(() => setParticles(p => p.filter(pp => !newParticles.find(np => np.id === pp.id))), 700);
+
+                  const REWARD = 1_000_000_000;
+                  setScore(s => s + REWARD);
+                  onEarnCoins(REWARD);
+                  setFloatTexts(ft => [
+                    ...ft,
+                    { id: Date.now() + Math.random(), x: m.x, y: m.y, text: `+1 МЛРД 🪙`, big: true },
+                    { id: Date.now() + Math.random() + 1, x: m.x, y: m.y - 8, text: `+1 МЛРД 💎`, big: true },
+                  ]);
+                  setTimeout(() => setMeteors(p => p.filter(mm => mm.id !== m.id)), 450);
                   return { ...m, hp: 0, exploding: true };
                 }
                 return { ...m, hp: newHp };
@@ -328,7 +395,8 @@ function GameScreen({ onBack, onEarnCoins }: { onBack: () => void; onEarnCoins: 
             }
             return m;
           });
-          return bPrev.filter(b => !hitBullets.has(b.id));
+          setBullets(bPrev.filter(b => !hitBullets.has(b.id)));
+          return newMeteors;
         });
         return mPrev;
       });
@@ -340,121 +408,121 @@ function GameScreen({ onBack, onEarnCoins }: { onBack: () => void; onEarnCoins: 
     if (!areaRef.current) return;
     const rect = areaRef.current.getBoundingClientRect();
     const clientX = "touches" in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
-    const pct = ((clientX - rect.left) / rect.width) * 100;
-    setCatX(Math.max(8, Math.min(92, pct)));
+    setCatX(Math.max(8, Math.min(92, ((clientX - rect.left) / rect.width) * 100)));
   };
 
   const restart = () => {
     setMeteors([]); setBullets([]); setScore(0); setHp(3);
-    setGameOver(false); setFloatTexts([]); setCatX(50);
+    setGameOver(false); setFloatTexts([]); setCatX(50); setParticles([]);
   };
 
-  const FOOD_EMOJIS = ["🍖","🐟","🥩","🍗","🫙"];
-  const foodEmoji = FOOD_EMOJIS[Math.floor(score / 50) % FOOD_EMOJIS.length];
+  const FOOD = ["🍖","🐟","🥩","🍗","🫙","🍣","🦴"];
+  const foodEmoji = FOOD[Math.floor(Date.now() / 200) % FOOD.length];
+
+  const fmtScore = (n: number) => {
+    if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}млрд`;
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}млн`;
+    return n.toString();
+  };
 
   return (
     <div
       ref={areaRef}
       className={`relative overflow-hidden select-none ${shake ? "shake" : ""}`}
-      style={{ height: "100dvh", maxHeight: "100dvh", background: "linear-gradient(180deg,#050d1a 0%,#0a1628 50%,#0d1f3c 100%)", touchAction: "none", cursor: "none" }}
+      style={{ height: "100dvh", maxHeight: "100dvh", perspective: "600px", background: "radial-gradient(ellipse at 50% 0%,#0d2a5e 0%,#060d1e 60%,#020509 100%)", touchAction: "none", cursor: "none" }}
       onMouseMove={handleCatDrag}
       onTouchMove={handleCatDrag}
     >
-      {/* Stars */}
-      <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(1px 1px at 10% 10%,#fff 0%,transparent 100%),radial-gradient(1px 1px at 30% 25%,#fff 0%,transparent 100%),radial-gradient(1px 1px at 55% 8%,rgba(255,230,0,.9) 0%,transparent 100%),radial-gradient(1px 1px at 75% 18%,#fff 0%,transparent 100%),radial-gradient(1px 1px at 90% 35%,#fff 0%,transparent 100%),radial-gradient(1px 1px at 15% 45%,#fff 0%,transparent 100%),radial-gradient(1px 1px at 42% 55%,rgba(200,150,255,.8) 0%,transparent 100%),radial-gradient(1px 1px at 80% 60%,#fff 0%,transparent 100%),radial-gradient(1px 1px at 5% 75%,#fff 0%,transparent 100%),radial-gradient(1px 1px at 60% 80%,rgba(0,212,255,.7) 0%,transparent 100%)", pointerEvents: "none" }} />
+      {/* Звёзды */}
+      <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(1px 1px at 5% 8%,#fff 0%,transparent 100%),radial-gradient(1px 1px at 22% 20%,rgba(255,255,255,.9) 0%,transparent 100%),radial-gradient(2px 2px at 45% 5%,rgba(255,230,0,.9) 0%,transparent 100%),radial-gradient(1px 1px at 70% 15%,#fff 0%,transparent 100%),radial-gradient(1px 1px at 88% 30%,#fff 0%,transparent 100%),radial-gradient(1px 1px at 12% 42%,rgba(200,150,255,.8) 0%,transparent 100%),radial-gradient(1px 1px at 35% 55%,#fff 0%,transparent 100%),radial-gradient(1px 1px at 60% 65%,rgba(0,212,255,.7) 0%,transparent 100%),radial-gradient(1px 1px at 80% 50%,#fff 0%,transparent 100%),radial-gradient(1px 1px at 95% 70%,#fff 0%,transparent 100%),radial-gradient(1px 1px at 18% 75%,#fff 0%,transparent 100%),radial-gradient(2px 2px at 50% 85%,rgba(200,100,255,.6) 0%,transparent 100%)", pointerEvents: "none" }} />
 
       {/* HUD */}
-      <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-3 pb-2" style={{ zIndex: 10, background: "linear-gradient(180deg,rgba(0,0,0,.6) 0%,transparent 100%)" }}>
-        <button onClick={() => setPaused(p => !p)} className="font-fredoka text-white text-xl w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(255,255,255,.15)", border: "2px solid rgba(255,255,255,.2)" }}>
+      <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-3 pt-3 pb-2" style={{ zIndex: 10, background: "linear-gradient(180deg,rgba(0,0,0,.7) 0%,transparent 100%)" }}>
+        <button onClick={() => setPaused(p => !p)} className="font-fredoka text-white text-lg w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(255,255,255,.12)", border: "2px solid rgba(255,255,255,.2)" }}>
           {paused ? "▶" : "⏸"}
         </button>
         <div className="flex items-center gap-1">
-          {[1,2,3].map(i => (
-            <span key={i} className={`text-2xl transition-all ${hp >= i ? "" : "opacity-20"}`}>❤️</span>
-          ))}
+          {[1,2,3].map(i => <span key={i} className={`text-xl transition-all ${hp >= i ? "" : "opacity-15"}`}>❤️</span>)}
         </div>
-        <div className="font-fredoka text-yellow-400 text-xl" style={{ textShadow: "0 2px 8px rgba(255,200,0,.6)" }}>
-          {score}
+        <div className="font-fredoka text-base" style={{ color: "#FFE600", textShadow: "0 0 12px rgba(255,220,0,.8)" }}>
+          🪙 {fmtScore(score)}
         </div>
       </div>
 
-      {/* Bullets (food) */}
+      {/* 3D Метеориты */}
+      {meteors.map(m => <Meteor3D key={m.id} m={m} />)}
+
+      {/* Снаряды — еда */}
       {bullets.map(b => (
-        <div key={b.id} style={{
-          position: "absolute", left: `${b.x}%`, top: `${b.y}%`,
-          fontSize: 18, transform: "translate(-50%,-50%)",
-          zIndex: 6, pointerEvents: "none",
-          filter: "drop-shadow(0 0 6px rgba(255,200,0,.8))",
-        }}>
+        <div key={b.id} style={{ position: "absolute", left: `${b.x}%`, top: `${b.y}%`, fontSize: 16, transform: "translate(-50%,-50%)", zIndex: 6, pointerEvents: "none", filter: "drop-shadow(0 0 5px rgba(255,180,0,.9))" }}>
           {foodEmoji}
         </div>
       ))}
 
-      {/* Meteors */}
-      {meteors.map(m => (
-        <div
-          key={m.id}
-          className={m.exploding ? "explode" : ""}
-          style={{
-            position: "absolute", left: `${m.x}%`, top: `${m.y}%`,
-            fontSize: m.size, transform: "translate(-50%,-50%)",
-            zIndex: 5,
-            filter: m.exploding ? "brightness(3)" : m.hp < m.maxHp ? "brightness(1.5) hue-rotate(30deg)" : "none",
-            transition: "filter .1s", userSelect: "none", pointerEvents: "none",
-          }}
-        >
-          {m.exploding ? "💥" : m.emoji}
-          {m.maxHp > 1 && !m.exploding && (
-            <div style={{ position: "absolute", bottom: -6, left: "50%", transform: "translateX(-50%)", width: m.size * 0.8, height: 4, background: "rgba(0,0,0,.5)", borderRadius: 2 }}>
-              <div style={{ width: `${(m.hp / m.maxHp) * 100}%`, height: "100%", background: m.hp === m.maxHp ? "#39FF14" : m.hp > 1 ? "#FFE600" : "#FF2D78", borderRadius: 2, transition: "width .1s" }} />
-            </div>
-          )}
-        </div>
+      {/* Частицы взрыва */}
+      {particles.map(p => (
+        <div key={p.id} className="particle" style={{
+          position: "absolute", left: `${p.x}%`, top: `${p.y}%`,
+          width: 10, height: 10, borderRadius: "50%",
+          background: p.color, zIndex: 15, pointerEvents: "none",
+          boxShadow: `0 0 6px ${p.color}`,
+          ["--dx" as string]: `${p.dx}px`, ["--dy" as string]: `${p.dy}px`,
+        }} />
       ))}
 
-      {/* Float texts */}
+      {/* Текст наград */}
       {floatTexts.map(ft => (
-        <div key={ft.id} className="score-pop font-fredoka"
-          style={{ position: "absolute", left: `${ft.x}%`, top: `${ft.y}%`, transform: "translate(-50%,-50%)", color: "#FFE600", fontSize: 20, zIndex: 20, textShadow: "0 2px 8px rgba(0,0,0,.8)", pointerEvents: "none" }}
+        <div key={ft.id}
+          className={ft.big ? "billion-pop font-fredoka" : "score-pop font-fredoka"}
+          style={{
+            position: "absolute", left: `${ft.x}%`, top: `${ft.y}%`,
+            transform: "translate(-50%,-50%)",
+            color: ft.text.includes("💎") ? "#DD88FF" : "#FFE600",
+            fontSize: ft.big ? 22 : 18,
+            zIndex: 25,
+            textShadow: "0 2px 12px rgba(0,0,0,.9), 0 0 20px rgba(255,200,0,.6)",
+            whiteSpace: "nowrap", fontWeight: 900,
+            WebkitTextStroke: "1px #111",
+          }}
           onAnimationEnd={() => setFloatTexts(p => p.filter(f => f.id !== ft.id))}>
           {ft.text}
         </div>
       ))}
 
-      {/* Cat */}
-      <div style={{ position: "absolute", bottom: "4%", left: `${catX}%`, transform: "translateX(-50%)", zIndex: 8, pointerEvents: "none" }}>
-        <div style={{ position: "relative", width: 64, height: 64 }}>
-          <img src={HERO_IMG} alt="кот" style={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover", filter: "drop-shadow(0 0 12px rgba(255,230,0,.7))", border: "3px solid #FFE600" }} />
-          <div style={{ position: "absolute", top: -4, left: -4, right: -4, bottom: -4, borderRadius: "50%", background: "radial-gradient(circle,rgba(255,230,0,.2) 0%,transparent 70%)" }} />
+      {/* Кот */}
+      <div style={{ position: "absolute", bottom: "3%", left: `${catX}%`, transform: "translateX(-50%)", zIndex: 8, pointerEvents: "none" }}>
+        <div style={{ position: "relative", width: 68, height: 68 }}>
+          <img src={HERO_IMG} alt="кот" style={{ width: 68, height: 68, borderRadius: "50%", objectFit: "cover", border: "3px solid #FFE600", boxShadow: "0 0 20px rgba(255,230,0,.8), 0 0 40px rgba(255,149,0,.4)" }} />
+          {/* Ореол */}
+          <div style={{ position: "absolute", inset: -6, borderRadius: "50%", border: "2px solid rgba(255,230,0,.3)", boxShadow: "0 0 15px rgba(255,230,0,.3)" }} />
         </div>
-        {/* Корм-поток визуально */}
-        <div style={{ position: "absolute", bottom: 62, left: "50%", transform: "translateX(-50%)", width: 2, height: 20, background: "linear-gradient(0deg,rgba(255,200,0,.8),transparent)", borderRadius: 2 }} />
+        {/* Луч стрельбы */}
+        <div style={{ position: "absolute", bottom: 66, left: "50%", transform: "translateX(-50%)", width: 3, height: 30, background: "linear-gradient(0deg,rgba(255,200,0,.9),transparent)", borderRadius: 2 }} />
       </div>
 
-      {/* Pause overlay */}
+      {/* Пауза */}
       {paused && !gameOver && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: "rgba(0,0,0,.7)", zIndex: 30 }}>
-          <div className="font-fredoka text-5xl text-yellow-400 title-stroke mb-6">ПАУЗА</div>
+        <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: "rgba(0,0,0,.75)", zIndex: 30, backdropFilter: "blur(4px)" }}>
+          <div className="font-fredoka text-5xl title-stroke mb-6" style={{ color: "#FFE600" }}>ПАУЗА</div>
           <button onClick={() => setPaused(false)} className="cloud-btn px-10 py-4 rounded-2xl font-fredoka text-2xl mb-3">▶ Продолжить</button>
-          <button onClick={onBack} className="font-fredoka text-white/70 text-lg mt-2 px-6 py-2 rounded-xl" style={{ background: "rgba(255,255,255,.1)", border: "2px solid rgba(255,255,255,.2)" }}>← Меню</button>
+          <button onClick={onBack} className="font-fredoka text-white/70 text-lg px-6 py-2 rounded-xl" style={{ background: "rgba(255,255,255,.1)", border: "2px solid rgba(255,255,255,.2)" }}>← Меню</button>
         </div>
       )}
 
       {/* Game Over */}
       {gameOver && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: "rgba(0,0,0,.8)", zIndex: 30 }}>
-          <div className="text-6xl mb-3">💀</div>
-          <div className="font-fredoka text-4xl title-stroke mb-1" style={{ color: "#FF2D78" }}>GAME OVER</div>
-          <div className="font-fredoka text-2xl text-yellow-400 mb-2">Счёт: {score}</div>
-          <div className="font-nunito text-white/60 text-sm mb-6">Монеты заработаны: 🪙{score}</div>
+        <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: "rgba(0,0,0,.85)", zIndex: 30, backdropFilter: "blur(6px)" }}>
+          <div style={{ fontSize: 64 }}>💀</div>
+          <div className="font-fredoka text-4xl title-stroke mt-2 mb-1" style={{ color: "#FF2D78" }}>GAME OVER</div>
+          <div className="font-fredoka text-2xl mb-1" style={{ color: "#FFE600" }}>Счёт: {fmtScore(score)}</div>
+          <div className="font-nunito text-white/55 text-sm mb-6">🪙 {fmtScore(score)} монет заработано!</div>
           <button onClick={restart} className="cloud-btn px-10 py-4 rounded-2xl font-fredoka text-2xl mb-3">🔄 Заново</button>
           <button onClick={onBack} className="font-fredoka text-white/70 text-lg px-6 py-2 rounded-xl" style={{ background: "rgba(255,255,255,.1)", border: "2px solid rgba(255,255,255,.2)" }}>← Меню</button>
         </div>
       )}
 
-      {/* Bottom hint */}
       {!gameOver && !paused && (
-        <div className="absolute bottom-0.5 left-0 right-0 text-center font-nunito text-white/30 text-xs" style={{ zIndex: 6 }}>
+        <div className="absolute bottom-0.5 left-0 right-0 text-center font-nunito text-white/25 text-xs" style={{ zIndex: 6 }}>
           Двигай пальцем влево / вправо
         </div>
       )}
