@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 type Screen = "menu" | "shop";
 type ShopTab = "skins" | "upgrades" | "content";
@@ -47,6 +47,14 @@ export default function Index() {
   const [gems, setGems] = useState(1468);
   const [purchased, setPurchased] = useState<number[]>([2]);
   const [notification, setNotification] = useState<string | null>(null);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCoins(c => c + 100);
+      setGems(g => g + 50);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const showNotif = (msg: string) => {
     setNotification(msg);
